@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CivicRequest.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260317125828_AddIdentity")]
-    partial class AddIdentity
+    [Migration("20260317134743_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

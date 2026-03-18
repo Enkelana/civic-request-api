@@ -1,17 +1,16 @@
-﻿using CivicRequest.API.Data;
-using CivicRequest.API.DTOs;
-using CivicRequest.API.Models;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Runtime.Intrinsics.X86;
-using static System.Net.WebRequestMethods;
+using CivicRequest.API.Data;
+using CivicRequest.API.Models;
+using CivicRequest.API.DTOs;
 
 namespace CivicRequest.API.Controllers
 {
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
+
     public class RequestsController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -21,7 +20,6 @@ namespace CivicRequest.API.Controllers
             _context = context;
         }
 
-        // GET: api/requests
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -32,7 +30,6 @@ namespace CivicRequest.API.Controllers
             return Ok(requests);
         }
 
-        // GET: api/requests/1
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -45,7 +42,6 @@ namespace CivicRequest.API.Controllers
             return Ok(request);
         }
 
-        // GET: api/requests/status/Pending
         [HttpGet("status/{status}")]
         public async Task<IActionResult> GetByStatus(string status)
         {
@@ -61,15 +57,37 @@ namespace CivicRequest.API.Controllers
             return Ok(requests);
         }
 
-        // POST: api/requests
+        [HttpGet("search")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Search(
+      [FromQuery] string? title,
+      [FromQuery] string? status,
+      [FromQuery] int? categoryId)
+        {
+            var query = _context.Requests
+                .Include(r => r.Citizen)
+                .Include(r => r.Category)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(title))
+                query = query.Where(r => r.Title.Contains(title));
+
+            if (!string.IsNullOrWhiteSpace(status) &&
+                Enum.TryParse<RequestStatus>(status, out var s))
+                query = query.Where(r => r.Status == s);
+
+            if (categoryId.HasValue && categoryId > 0)
+                query = query.Where(r => r.CategoryId == categoryId.Value);
+
+            return Ok(await query.ToListAsync());
+        }
+
         [HttpPost]
         public async Task<IActionResult> Create(CreateRequestDto dto)
         {
-            // Kontrollo nëse citizen ekziston
             var citizen = await _context.Citizens.FindAsync(dto.CitizenId);
             if (citizen == null) return NotFound("Qytetari nuk u gjet!");
 
-            // Kontrollo nëse category ekziston
             var category = await _context.Categories.FindAsync(dto.CategoryId);
             if (category == null) return NotFound("Kategoria nuk u gjet!");
 
@@ -88,7 +106,6 @@ namespace CivicRequest.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
         }
 
-        // PUT: api/requests/1/status
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, UpdateRequestDto dto)
         {
@@ -106,7 +123,6 @@ namespace CivicRequest.API.Controllers
             return Ok(request);
         }
 
-        // DELETE: api/requests/1
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

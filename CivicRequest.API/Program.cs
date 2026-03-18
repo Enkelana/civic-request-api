@@ -1,18 +1,19 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using CivicRequest.API.Data;
 using CivicRequest.API.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration
-        .GetConnectionString("DefaultConnection")));
+options.UseSqlServer(builder.Configuration
+    .GetConnectionString("DefaultConnection")));
 
 // Identity
 builder.Services.AddIdentity<Officer, IdentityRole>(options =>
@@ -51,7 +52,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:3001")
+        policy.WithOrigins(
+            "http://localhost:3000",
+            "http://localhost:3001",
+            builder.Configuration["Frontend:Url"] ?? "")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
