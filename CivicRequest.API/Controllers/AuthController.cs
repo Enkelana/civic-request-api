@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using CivicRequest.API.DTOs;
+using CivicRequest.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using CivicRequest.API.Models;
-using CivicRequest.API.DTOs;
 
 namespace CivicRequest.API.Controllers
 {
@@ -88,5 +89,47 @@ namespace CivicRequest.API.Controllers
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
+        // GET: api/auth/profile
+        [Authorize]
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+            var officer = await _userManager.FindByEmailAsync(email!);
+            if (officer == null) return NotFound("Zyrtari nuk u gjet!");
+
+            return Ok(new
+            {
+                officer.FullName,
+                officer.Email,
+                officer.Role,
+                officer.CreatedAt
+            });
+        }
+
+        [Authorize]
+        [HttpPut("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+
+            if (email == null) return Unauthorized("Token i pavlefshëm!");
+
+            var officer = await _userManager.FindByEmailAsync(email);
+            if (officer == null) return NotFound("Zyrtari nuk u gjet!");
+
+            var isValid = await _userManager.CheckPasswordAsync(officer, dto.CurrentPassword);
+            if (!isValid) return BadRequest("Fjalëkalimi aktual është i gabuar!");
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(officer);
+            var result = await _userManager.ResetPasswordAsync(officer, token, dto.NewPassword);
+
+            if (!result.Succeeded)
+                return BadRequest(result.Errors.Select(e => e.Description));
+
+            return Ok("Fjalëkalimi u ndryshua me sukses!");
+        }
+
     }
 }
