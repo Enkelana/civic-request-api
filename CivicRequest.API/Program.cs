@@ -68,7 +68,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler =
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
-
+builder.Services.AddSingleton<CivicRequest.API.Services.EmailService>();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

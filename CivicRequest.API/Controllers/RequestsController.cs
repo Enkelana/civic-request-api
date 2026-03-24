@@ -14,12 +14,13 @@ namespace CivicRequest.API.Controllers
     public class RequestsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly Services.EmailService _emailService;
 
-        public RequestsController(AppDbContext context)
+        public RequestsController(AppDbContext context, Services.EmailService emailService)
         {
             _context = context;
+            _emailService = emailService;
         }
-
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -103,6 +104,24 @@ namespace CivicRequest.API.Controllers
 
             _context.Requests.Add(request);
             await _context.SaveChangesAsync();
+
+            // Dërgo email njoftim
+            try
+            {
+                var body = _emailService.KerkesaEReTemplate(
+                    citizen.FullName,
+                    request.Title,
+                    category.Name
+                );
+                await _emailService.SendEmailAsync(
+                    citizen.Email,
+                    citizen.FullName,
+                    "Kërkesa juaj u regjistrua - CivicRequest",
+                    body
+                );
+            }
+            catch { /* Email dështoi, por kërkesa u krijua */ }
+
             return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
         }
 
@@ -120,6 +139,36 @@ namespace CivicRequest.API.Controllers
             request.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // Dërgo email njoftim
+            try
+            {
+                var citizen = await _context.Citizens.FindAsync(request.CitizenId);
+                if (citizen != null)
+                {
+                    var statusText = request.Status switch
+                    {
+                        RequestStatus.InProgress => "Në Process",
+                        RequestStatus.Resolved => "Zgjidhur",
+                        RequestStatus.Rejected => "Refuzuar",
+                        _ => "Në Pritje"
+                    };
+                    var body = _emailService.StatusNdryshimTemplate(
+                        citizen.FullName,
+                        request.Title,
+                        statusText,
+                        request.OfficerNotes ?? ""
+                    );
+                    await _emailService.SendEmailAsync(
+                        citizen.Email,
+                        citizen.FullName,
+                        "Statusi i kërkesës suaj ndryshoi - CivicRequest",
+                        body
+                    );
+                }
+            }
+            catch { /* Email dështoi, por statusi u përditësua */ }
+
             return Ok(request);
         }
 
