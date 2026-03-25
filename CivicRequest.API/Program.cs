@@ -8,12 +8,19 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System.Text;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
-options.UseSqlServer(builder.Configuration
-    .GetConnectionString("DefaultConnection")));
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+    if (builder.Environment.IsProduction())
+        options.UseNpgsql(connectionString);
+    else
+        options.UseSqlServer(connectionString);
+});
 
 // Identity
 builder.Services.AddIdentity<Officer, IdentityRole>(options =>
@@ -55,6 +62,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
             "http://localhost:3000",
             "http://localhost:3001",
+            "https://civic-request-frontend.vercel.app",
             builder.Configuration["Frontend:Url"] ?? "")
               .AllowAnyHeader()
               .AllowAnyMethod();
