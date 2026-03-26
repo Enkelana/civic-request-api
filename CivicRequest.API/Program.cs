@@ -13,26 +13,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
-
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException("DefaultConnection is missing.");
 }
 
+Console.WriteLine("FORCING POSTGRESQL");
+Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    if (builder.Environment.IsProduction())
-    {
-        Console.WriteLine("Using PostgreSQL");
-        options.UseNpgsql(connectionString);
-    }
-    else
-    {
-        Console.WriteLine("Using SQL Server");
-        options.UseSqlServer(connectionString);
-    }
-});
+    options.UseNpgsql(connectionString));
 
 // Identity
 builder.Services.AddIdentity<Officer, IdentityRole>(options =>
