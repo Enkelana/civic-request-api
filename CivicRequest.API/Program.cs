@@ -24,6 +24,8 @@ Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+
+
 // Identity
 builder.Services.AddIdentity<Officer, IdentityRole>(options =>
 {
@@ -93,4 +95,9 @@ app.UseCors("AllowReact");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
 app.Run();
