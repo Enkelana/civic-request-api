@@ -3,14 +3,13 @@ using CivicRequest.API.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System.Text;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
+// Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -18,13 +17,13 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("DefaultConnection is missing.");
 }
 
-Console.WriteLine("FORCING POSTGRESQL");
-Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
-
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
-
-
+{
+    if (builder.Environment.IsProduction())
+        options.UseNpgsql(connectionString);
+    else
+        options.UseSqlServer(connectionString);
+});
 
 // Identity
 builder.Services.AddIdentity<Officer, IdentityRole>(options =>
@@ -63,11 +62,20 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
     {
-        policy.WithOrigins(
+        var origins = new List<string>
+        {
             "http://localhost:3000",
             "http://localhost:3001",
-            "https://civic-request-frontend.vercel.app",
-            builder.Configuration["Frontend:Url"] ?? "")
+            "https://civic-request-frontend.vercel.app"
+        };
+
+        var frontendUrl = builder.Configuration["Frontend:Url"];
+        if (!string.IsNullOrWhiteSpace(frontendUrl))
+        {
+            origins.Add(frontendUrl);
+        }
+
+        policy.WithOrigins(origins.ToArray())
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -80,6 +88,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler =
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
+
 builder.Services.AddSingleton<CivicRequest.API.Services.EmailService>();
 builder.Services.AddOpenApi();
 
@@ -94,10 +103,15 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowReact");
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapGet("/", () => "CivicRequest API is running.");
 app.MapControllers();
+
+// Apply migrations automatically
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 }
+
 app.Run();
