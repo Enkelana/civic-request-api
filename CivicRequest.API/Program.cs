@@ -12,15 +12,19 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-    if (builder.Environment.IsProduction())
-        options.UseNpgsql(connectionString);
-    else
-        options.UseSqlServer(connectionString);
-});
+if (builder.Environment.IsProduction())
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
+else
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlServer(connectionString));
+}
+
 
 // Identity
 builder.Services.AddIdentity<Officer, IdentityRole>(options =>
