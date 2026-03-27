@@ -18,12 +18,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    if (builder.Environment.IsProduction())
-        options.UseNpgsql(connectionString);
-    else
-        options.UseSqlServer(connectionString);
-});
+    options.UseNpgsql(connectionString));
 
 // Identity
 builder.Services.AddIdentity<Officer, IdentityRole>(options =>
